@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'PIC Emulator UI',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget {
         // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'PIC Emulator UI'),
     );
   }
 }
@@ -61,8 +61,10 @@ class _MyHomePageState extends State<MyHomePage> {
   Address _pc;
   File _program;
   String _emuSpeed = 'Fast';
+  int _memoryViewStart = 0;
   var speeds = {'Slow': 100000, 'Medium': 5000, 'Fast': 1};
 
+  get _programMemoryLen => _runner.computer.memory.program.lengthInWords;
   get _isValidProgram => _program != null;
   get _emuSpeedUs => speeds[_emuSpeed];
 
@@ -88,11 +90,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<TableRow> getMemoryTableRows() {
-    return List<TableRow>.generate(
-        _runner.computer.memory.program.lengthInWords,
-        (i) => TableRow(
-            children: [Text('', style: TextStyle(height: 0.25))],
-            decoration: BoxDecoration(color: getMemoryCellColor(i))));
+    List<TableRow> rows = List<TableRow>(_programMemoryLen - _memoryViewStart);
+    for (int i = 0; i < _programMemoryLen - _memoryViewStart; ++i) {
+      rows[i] = TableRow(
+        children: [Text('', style: TextStyle(height: 0.25))],
+        decoration: BoxDecoration(color: getMemoryCellColor(_memoryViewStart + i)));
+    }
+    return rows;
   }
 
   Row getFilePickerRow() {
@@ -135,89 +139,81 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Stack(children: [
-        Container(
-            margin: const EdgeInsets.all(10),
-            child: Text('Program Memory (drag up/down to scroll)')),
+      body: Row(children: [
         SingleChildScrollView(
-          child: Container(
-            alignment: Alignment.topLeft,
-            margin: EdgeInsets.all(40),
-            width: 75,
-            child: Table(
-              border: TableBorder.all(width: 0.3),
-              children: getMemoryTableRows(),
-            ),
+          child: Column(
+            children: [
+              Text('Program Memory (drag to scroll)'),
+              Container(
+                alignment: Alignment.topLeft,
+                margin: EdgeInsets.all(20),
+                width: 75,
+                child: Table(
+                  border: TableBorder.all(width: 0.3),
+                  children: getMemoryTableRows(),
+                ),
+              ),
+            ],
           ),
         ),
         Container(
             alignment: Alignment.topRight,
             margin: const EdgeInsets.all(40),
+            width: 300,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 getFilePickerRow(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    Container(
-                        alignment: Alignment.centerLeft,
-                        width: 150,
-                        child: Text(
-                          'Program Loaded OK?',
-                        )),
-                    Icon(
-                      _isValidProgram ? Icons.check : Icons.block,
-                      color: _isValidProgram ? Colors.green : Colors.red,
-                      size: 36.0,
-                      semanticLabel: 'Valid Program is Loaded',
-                    ),
-                  ],
+                ListTile(
+                  title: const Text('Program Loaded OK?'),
+                  trailing: Icon(
+                    _isValidProgram ? Icons.check : Icons.block,
+                    color: _isValidProgram ? Colors.green : Colors.red,
+                    size: 36.0,
+                    semanticLabel: 'Valid Program is Loaded',
+                  ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    Container(
-                        alignment: Alignment.centerLeft,
-                        width: 150,
-                        child: Text(
-                          'Emulator Speed',
-                        )),
-                    DropdownButton<String>(
-                      value: _emuSpeed,
-                      elevation: 16,
-                      onChanged: (String newValue) {
-                        setState(() {
-                          _emuSpeed = newValue;
-                        });
-                      },
-                      items: <String>['Slow', 'Medium', 'Fast']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                ListTile(
+                  title: const Text('Emulator Speed'),
+                  trailing: DropdownButton<String>(
+                    value: _emuSpeed,
+                    elevation: 16,
+                    onChanged: (String newValue) {
+                      setState(() {
+                        _emuSpeed = newValue;
+                      });
+                    },
+                    items: <String>['Slow', 'Medium', 'Fast']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    Container(
-                        alignment: Alignment.centerLeft,
-                        width: 150,
-                        child: Text(
-                          'Program Counter:',
-                        )),
-                    Text(
-                      "$_pc",
-                      style: Theme.of(context).textTheme.headline4,
-                    ),
-                  ],
+              ListTile(
+                title: const Text('Min Memory Address'),
+                trailing: Container(
+                  width: 50,
+                  child: TextFormField(
+                    initialValue: '0000',
+                    onFieldSubmitted: (value) {
+                      setState(() {
+                        _memoryViewStart = int.parse(value);
+                      });
+                    },
+                  ),
                 ),
+              ),
+                ListTile(
+                  title: const Text('Program Counter'),
+                  trailing: Text(_pc.toString()),
+                )
               ],
-            ))
+            )
+          )
       ]),
     );
   }
